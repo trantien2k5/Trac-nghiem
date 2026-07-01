@@ -116,6 +116,11 @@ textarea { resize: vertical; line-height: 1.5; min-height: 140px; }
 }
 .error-box ul { margin: 4px 0 0; padding-left: 18px; }
 
+.editor-preview-section {
+  margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--color-border);
+}
+.editor-preview-section .review-list { margin-top: 10px; max-height: 480px; overflow-y: auto; }
+
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr;

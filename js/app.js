@@ -422,17 +422,35 @@ function switchHomeTab(tab) {
 // ---------------------------------------------------------------------------
 // Editor tab ("Thêm đề")
 // ---------------------------------------------------------------------------
+let editorPreviewExpanded = true;
+
 function updatePreview() {
   const text = $('input-quiz-text').value;
   const preview = $('question-count-preview');
+  const previewSection = $('editor-preview-section');
+
   if (!text.trim()) {
     preview.textContent = '';
+    previewSection.classList.add('hidden');
     return;
   }
-  const { questions } = parseQuizText(text);
+
+  const { questions, errors } = parseQuizText(text);
   preview.textContent = questions.length > 0
     ? `✓ Phát hiện ${questions.length} câu hỏi hợp lệ`
     : 'Chưa phát hiện câu hỏi hợp lệ nào';
+
+  if (questions.length === 0) {
+    previewSection.classList.add('hidden');
+    return;
+  }
+
+  previewSection.classList.remove('hidden');
+  $('editor-preview-list').classList.toggle('hidden', !editorPreviewExpanded);
+  $('btn-toggle-editor-preview').textContent = editorPreviewExpanded ? 'Ẩn' : 'Hiện';
+  if (editorPreviewExpanded) {
+    renderQuestionPreviewList($('editor-preview-list'), questions, errors);
+  }
 }
 
 function updateEditorModeBanner() {
@@ -583,6 +601,57 @@ function renderQuizLibrary() {
 // ---------------------------------------------------------------------------
 // Preview screen ("Xem đề") — read-only view of a saved quiz's full content
 // ---------------------------------------------------------------------------
+// Dựng 1 khối thẻ hiển thị đầy đủ 1 câu hỏi đã tách: câu hỏi, 4 đáp án
+// (đáp án đúng tô xanh), và giải thích. Dùng chung cho màn "Xem đề" và
+// khu vực xem trước trực tiếp trong tab "Thêm đề".
+function buildQuestionPreviewCard(q, idx) {
+  const card = document.createElement('div');
+  card.className = 'review-item';
+
+  const head = document.createElement('div');
+  head.className = 'review-item-head';
+  head.innerHTML = `<span class="review-badge neutral">Câu ${idx + 1}</span>`;
+  card.appendChild(head);
+
+  const qText = document.createElement('p');
+  qText.className = 'review-question';
+  qText.textContent = q.text;
+  card.appendChild(qText);
+
+  const optWrap = document.createElement('div');
+  optWrap.className = 'review-options';
+  q.options.forEach((opt) => {
+    const row = document.createElement('div');
+    row.className = 'review-option' + (opt.isCorrect ? ' correct' : '');
+    row.innerHTML = `<span class="option-key">${opt.key}</span><span></span>`;
+    row.querySelector('span:last-child').textContent = opt.text;
+    optWrap.appendChild(row);
+  });
+  card.appendChild(optWrap);
+
+  const explBox = document.createElement('div');
+  explBox.className = 'review-explanation';
+  explBox.innerHTML = '<strong>💡 Giải thích:</strong> <span></span>';
+  explBox.querySelector('span').textContent = q.explanation;
+  card.appendChild(explBox);
+
+  return card;
+}
+
+function renderQuestionPreviewList(container, questions, errors) {
+  container.innerHTML = '';
+
+  if (errors.length > 0) {
+    const warn = document.createElement('div');
+    warn.className = 'error-box';
+    warn.innerHTML = `<p>Có ${errors.length} câu bị lỗi định dạng (không hiển thị bên dưới):</p>`
+      + '<ul>' + errors.map((e) => `<li>${escapeHtml(e)}</li>`).join('') + '</ul>';
+    container.appendChild(warn);
+  }
+
+  questions.forEach((q, idx) => container.appendChild(buildQuestionPreviewCard(q, idx)));
+}
+
 function openQuizPreview(quiz) {
   const { questions, errors } = parseQuizText(quiz.rawText);
 
@@ -591,51 +660,7 @@ function openQuizPreview(quiz) {
     ? `${questions.length} câu hợp lệ · ${errors.length} câu bị lỗi`
     : `${questions.length} câu`;
 
-  const list = $('preview-list');
-  list.innerHTML = '';
-
-  if (errors.length > 0) {
-    const warn = document.createElement('div');
-    warn.className = 'error-box';
-    warn.innerHTML = `<p>Đề có ${errors.length} câu bị lỗi định dạng (không hiển thị bên dưới):</p>`
-      + '<ul>' + errors.map((e) => `<li>${escapeHtml(e)}</li>`).join('') + '</ul>';
-    list.appendChild(warn);
-  }
-
-  questions.forEach((q, idx) => {
-    const card = document.createElement('div');
-    card.className = 'review-item';
-
-    const head = document.createElement('div');
-    head.className = 'review-item-head';
-    head.innerHTML = `<span class="review-badge neutral">Câu ${idx + 1}</span>`;
-    card.appendChild(head);
-
-    const qText = document.createElement('p');
-    qText.className = 'review-question';
-    qText.textContent = q.text;
-    card.appendChild(qText);
-
-    const optWrap = document.createElement('div');
-    optWrap.className = 'review-options';
-    q.options.forEach((opt) => {
-      const row = document.createElement('div');
-      row.className = 'review-option' + (opt.isCorrect ? ' correct' : '');
-      row.innerHTML = `<span class="option-key">${opt.key}</span><span></span>`;
-      row.querySelector('span:last-child').textContent = opt.text;
-      optWrap.appendChild(row);
-    });
-    card.appendChild(optWrap);
-
-    const explBox = document.createElement('div');
-    explBox.className = 'review-explanation';
-    explBox.innerHTML = '<strong>💡 Giải thích:</strong> <span></span>';
-    explBox.querySelector('span').textContent = q.explanation;
-    card.appendChild(explBox);
-
-    list.appendChild(card);
-  });
-
+  renderQuestionPreviewList($('preview-list'), questions, errors);
   showScreen('preview');
 }
 
@@ -724,6 +749,10 @@ $('btn-save-quiz').addEventListener('click', handleSaveQuiz);
 $('btn-load-sample').addEventListener('click', () => {
   $('input-quiz-text').value = SAMPLE_QUIZ_TEXT;
   if (!$('input-title').value.trim()) $('input-title').value = 'Đề thi mẫu';
+  updatePreview();
+});
+$('btn-toggle-editor-preview').addEventListener('click', () => {
+  editorPreviewExpanded = !editorPreviewExpanded;
   updatePreview();
 });
 
