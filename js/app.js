@@ -31,7 +31,7 @@ function buildQuestions(parsedQuestions, shuffleQuestions, shuffleOptions) {
   questions = questions.map((q) => {
     const options = shuffleOptions ? shuffleArray(q.options) : q.options.slice();
     const withKeys = options.map((o, i) => ({ ...o, displayKey: 'ABCD'[i] }));
-    return { id: q.id, text: q.text, options: withKeys };
+    return { id: q.id, text: q.text, options: withKeys, explanation: q.explanation };
   });
   return questions;
 }
@@ -259,6 +259,7 @@ function computeResults() {
       id: q.id,
       text: q.text,
       options: q.options,
+      explanation: q.explanation,
       userKey,
       correctKey: correctOpt.displayKey,
       status,
@@ -373,6 +374,14 @@ function renderReviewList() {
       optWrap.appendChild(row);
     });
     card.appendChild(optWrap);
+
+    if (q.explanation) {
+      const explBox = document.createElement('div');
+      explBox.className = 'review-explanation';
+      explBox.innerHTML = '<strong>💡 Giải thích:</strong> <span></span>';
+      explBox.querySelector('span').textContent = q.explanation;
+      card.appendChild(explBox);
+    }
 
     list.appendChild(card);
   });

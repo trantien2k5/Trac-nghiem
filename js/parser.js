@@ -1,12 +1,15 @@
 // Parser cho định dạng đề thi văn bản thuần.
 //
-// Mỗi câu hỏi cách nhau bởi 1 dòng trống. Trong một câu:
-//   - Các dòng không khớp mẫu đáp án/đáp án-đúng được coi là nội dung câu hỏi.
+// Mỗi câu hỏi cách nhau bởi 1 dòng trống. Mỗi câu bắt buộc có đủ 4 phần:
+//   - Nội dung câu hỏi (các dòng không khớp đáp án/đáp án đúng/giải thích).
 //   - 4 dòng đáp án dạng "A. ...", "B) ...", "C: ...", "D - ..." (chấp nhận chữ hoa/thường).
-//   - Đáp án đúng được đánh dấu bằng dấu "*" ngay trước chữ cái, hoặc bằng
-//     một dòng riêng "Đáp án: X" / "Dap an: X" / "Answer: X" ở cuối câu.
+//   - Đáp án đúng: đánh dấu bằng dấu "*" ngay trước chữ cái, hoặc bằng
+//     một dòng riêng "Đáp án: X" / "Dap an: X" / "Answer: X".
+//   - Giải thích: dòng riêng "Giải thích: ..." (mọi dòng sau đó trong cùng
+//     câu được coi là phần tiếp theo của giải thích).
 
 const ANSWER_LINE_RE = /^\s*(đáp\s*án|dap\s*an|answer|correct\s*answer|correct|đa)\s*[:.\-)]\s*([a-dA-D])\s*\.?\s*$/i;
+const EXPLANATION_LINE_RE = /^\s*(giải\s*thích|giai\s*thich|explanation|explain|gt)\s*[:.\-)]\s*(.*)$/i;
 const OPTION_LINE_RE = /^\s*(\*)?\s*\(?([a-dA-D])\)?\s*[.):\-]\s*(.+)$/;
 const QUESTION_MARKER_RE = /^\s*(câu\s*hỏi|câu|question)\s*\d+\s*[.:)\-]/i;
 const QUESTION_PREFIX_STRIP_RE = /^\s*(câu\s*hỏi|câu|question)?\s*\d+\s*[.:)\-]\s*/i;
@@ -31,9 +34,21 @@ export function parseQuizText(rawText) {
     const questionNumber = blockIdx + 1;
     const questionLines = [];
     const options = [];
+    const explanationLines = [];
     let answerFromLine = null;
+    let explanationStarted = false;
 
     for (const line of lines) {
+      if (explanationStarted) {
+        explanationLines.push(line);
+        continue;
+      }
+      const expMatch = line.match(EXPLANATION_LINE_RE);
+      if (expMatch) {
+        explanationStarted = true;
+        if (expMatch[2] && expMatch[2].trim()) explanationLines.push(expMatch[2].trim());
+        continue;
+      }
       const ansMatch = line.match(ANSWER_LINE_RE);
       if (ansMatch) {
         answerFromLine = ansMatch[2].toUpperCase();
@@ -87,10 +102,17 @@ export function parseQuizText(rawText) {
       return;
     }
 
+    const explanation = explanationLines.join(' ').trim();
+    if (!explanation) {
+      errors.push(`Câu ${questionNumber}: thiếu phần giải thích (thêm dòng "Giải thích: ...").`);
+      return;
+    }
+
     questions.push({
       id: `q${questionNumber}_${Math.random().toString(36).slice(2, 9)}`,
       text: questionText,
       options,
+      explanation,
     });
   });
 
@@ -136,12 +158,14 @@ B. Hà Nội
 C. TP. Hồ Chí Minh
 D. Huế
 Đáp án: B
+Giải thích: Hà Nội được chọn làm thủ đô của Việt Nam, là trung tâm chính trị của cả nước.
 
 Câu 2: Kết quả của 7 + 8 là bao nhiêu?
 A. 14
 *B. 15
 C. 16
 D. 17
+Giải thích: 7 + 8 = 15.
 
 Câu 3: Hành tinh nào được gọi là "Hành tinh Đỏ"?
 A. Sao Kim
@@ -149,16 +173,19 @@ B. Sao Mộc
 C. Sao Hỏa
 D. Sao Thổ
 Đáp án: C
+Giải thích: Sao Hỏa có bề mặt chứa nhiều oxit sắt nên có màu đỏ, được gọi là "Hành tinh Đỏ".
 
 Câu 4: Trong tiếng Anh, "Books" có nghĩa là gì?
 A. Cái bàn
 *B. Quyển sách (số nhiều)
 C. Cây bút
 D. Con mèo
+Giải thích: "Book" nghĩa là quyển sách, thêm "s" thành số nhiều "Books".
 
 Câu 5: Việt Nam nằm ở khu vực nào của châu Á?
 A. Đông Bắc Á
 B. Nam Á
 C. Đông Nam Á
 D. Trung Á
-Đáp án: C`;
+Đáp án: C
+Giải thích: Việt Nam thuộc khu vực Đông Nam Á, giáp Trung Quốc, Lào và Campuchia.`;

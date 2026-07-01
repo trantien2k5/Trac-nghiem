@@ -451,6 +451,12 @@ textarea { resize: vertical; line-height: 1.5; min-height: 140px; }
 .review-option.user-wrong { border-color: var(--color-danger); background: var(--color-danger-light); }
 .review-option.user-wrong .option-key { background: var(--color-danger); border-color: var(--color-danger); color: #fff; }
 
+.review-explanation {
+  margin-top: 12px; background: var(--color-primary-light); color: var(--color-text);
+  border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; line-height: 1.5;
+}
+.review-explanation strong { color: var(--color-primary-dark); }
+
 .result-actions { margin-top: 20px; }
 
 @media (min-width: 480px) {

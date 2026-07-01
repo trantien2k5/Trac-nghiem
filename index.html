@@ -149,11 +149,14 @@
       <div class="modal-handle"></div>
       <h3 class="modal-title">Định dạng đề thi</h3>
       <div class="format-help">
-        <p>Mỗi câu hỏi cách nhau bằng <strong>1 dòng trống</strong>. Mỗi câu gồm: nội dung câu hỏi, 4 dòng đáp án <strong>A. B. C. D.</strong>, và đáp án đúng được xác định bằng <strong>một trong hai cách</strong>:</p>
+        <p>Mỗi câu hỏi cách nhau bằng <strong>1 dòng trống</strong>. Mỗi câu <strong>bắt buộc</strong> có đủ 4 phần sau:</p>
         <ul>
-          <li>Đặt dấu <code>*</code> ngay trước đáp án đúng, hoặc</li>
-          <li>Thêm dòng <code>Đáp án: X</code> ở cuối câu</li>
+          <li><strong>Nội dung câu hỏi</strong></li>
+          <li><strong>4 đáp án</strong> A. B. C. D.</li>
+          <li><strong>Đáp án đúng</strong>: đặt dấu <code>*</code> ngay trước đáp án đúng, hoặc thêm dòng <code>Đáp án: X</code></li>
+          <li><strong>Giải thích</strong>: thêm dòng <code>Giải thích: ...</code> ở cuối câu, nêu lý do đáp án đúng</li>
         </ul>
+        <p class="hint-text">Thiếu bất kỳ phần nào (kể cả giải thích) câu đó sẽ bị báo lỗi khi lưu đề.</p>
         <pre id="format-example" class="format-example"></pre>
       </div>
       <button type="button" id="btn-close-format" class="primary-btn full">Đã hiểu</button>
