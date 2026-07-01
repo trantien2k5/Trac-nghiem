@@ -2,6 +2,7 @@ import { parseQuizText, shuffleArray, SAMPLE_QUIZ_TEXT } from './parser.js';
 import {
   loadHistory, saveAttempt, clearHistory,
   saveProgress, loadProgress, clearProgress,
+  loadQuizzes, saveQuiz, deleteQuiz,
 } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -23,7 +24,6 @@ function showScreen(name) {
 // ---------------------------------------------------------------------------
 let exam = null; // active exam state while on the exam screen
 let currentAttempt = null; // last computed attempt shown on the result screen
-let timeFieldTouched = false;
 let confirmCallback = null;
 
 function buildQuestions(parsedQuestions, shuffleQuestions, shuffleOptions) {
@@ -384,19 +384,34 @@ function formatDuration(sec) {
   return `${m} phút ${String(s).padStart(2, '0')} giây`;
 }
 
-// ---------------------------------------------------------------------------
-// Home screen
-// ---------------------------------------------------------------------------
-function readConfigFromForm() {
-  return {
-    title: $('input-title').value.trim(),
-    rawText: $('input-quiz-text').value,
-    timeLimitMinutes: Math.max(1, Number($('input-time-limit').value) || 15),
-    shuffleQuestions: $('toggle-shuffle-q').checked,
-    shuffleOptions: $('toggle-shuffle-o').checked,
-  };
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
+// ---------------------------------------------------------------------------
+// Home screen: tab switching ("Luyện đề" / "Thêm đề")
+// ---------------------------------------------------------------------------
+let editingQuizId = null; // quiz currently loaded in the editor, if any
+let expandedQuizId = null; // quiz card with its start-config panel open
+
+function switchHomeTab(tab) {
+  $('tab-btn-practice').classList.toggle('active', tab === 'practice');
+  $('tab-btn-editor').classList.toggle('active', tab === 'editor');
+  $('panel-practice').classList.toggle('active', tab === 'practice');
+  $('panel-editor').classList.toggle('active', tab === 'editor');
+  if (tab === 'practice') {
+    expandedQuizId = null;
+    renderQuizLibrary();
+    renderHistory();
+    checkResumeBanner();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Editor tab ("Thêm đề")
+// ---------------------------------------------------------------------------
 function updatePreview() {
   const text = $('input-quiz-text').value;
   const preview = $('question-count-preview');
@@ -408,15 +423,43 @@ function updatePreview() {
   preview.textContent = questions.length > 0
     ? `✓ Phát hiện ${questions.length} câu hỏi hợp lệ`
     : 'Chưa phát hiện câu hỏi hợp lệ nào';
+}
 
-  if (!timeFieldTouched && questions.length > 0) {
-    $('input-time-limit').value = Math.max(5, questions.length);
+function updateEditorModeBanner() {
+  const banner = $('editor-mode-banner');
+  if (editingQuizId) {
+    banner.classList.remove('hidden');
+    $('editor-mode-title').textContent = $('input-title').value.trim() || 'Đề không tên';
+  } else {
+    banner.classList.add('hidden');
   }
 }
 
-function handleStartExam() {
-  const config = readConfigFromForm();
-  const { questions, errors } = parseQuizText(config.rawText);
+function loadQuizIntoEditor(quiz) {
+  editingQuizId = quiz.id;
+  $('input-title').value = quiz.title;
+  $('input-quiz-text').value = quiz.rawText;
+  $('parse-errors').classList.add('hidden');
+  $('save-quiz-toast').classList.add('hidden');
+  updatePreview();
+  updateEditorModeBanner();
+  switchHomeTab('editor');
+}
+
+function resetEditor() {
+  editingQuizId = null;
+  $('input-title').value = '';
+  $('input-quiz-text').value = '';
+  $('parse-errors').classList.add('hidden');
+  $('save-quiz-toast').classList.add('hidden');
+  updatePreview();
+  updateEditorModeBanner();
+}
+
+function handleSaveQuiz() {
+  const title = $('input-title').value.trim() || 'Đề không tên';
+  const rawText = $('input-quiz-text').value;
+  const { questions, errors } = parseQuizText(rawText);
   const errorBox = $('parse-errors');
 
   if (questions.length === 0 || errors.length > 0) {
@@ -426,21 +469,119 @@ function handleStartExam() {
       : `<p>Đã tìm thấy ${questions.length} câu hợp lệ, nhưng có ${errors.length} lỗi cần sửa:</p>`;
     errorBox.innerHTML = summary + '<ul>' + errors.map((e) => `<li>${escapeHtml(e)}</li>`).join('') + '</ul>';
     if (questions.length === 0) return;
-    if (!window.confirm(`Có ${errors.length} câu bị lỗi sẽ bị bỏ qua. Vẫn tiếp tục với ${questions.length} câu hợp lệ?`)) {
+    if (!window.confirm(`Có ${errors.length} câu bị lỗi sẽ bị bỏ qua khi lưu. Vẫn tiếp tục lưu với ${questions.length} câu hợp lệ?`)) {
       return;
     }
   } else {
     errorBox.classList.add('hidden');
   }
 
-  const built = buildQuestions(questions, config.shuffleQuestions, config.shuffleOptions);
-  startExam(config, built, null);
+  const saved = saveQuiz({ id: editingQuizId, title, rawText });
+  editingQuizId = saved.id;
+  updateEditorModeBanner();
+
+  const toast = $('save-quiz-toast');
+  toast.textContent = `✓ Đã lưu đề "${saved.title}"`;
+  toast.classList.remove('hidden');
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+// ---------------------------------------------------------------------------
+// Practice tab ("Luyện đề")
+// ---------------------------------------------------------------------------
+function renderQuizLibrary() {
+  const quizzes = loadQuizzes();
+  const list = $('quiz-library-list');
+
+  if (quizzes.length === 0) {
+    list.innerHTML = '<p class="empty-text">Chưa có đề nào. Sang tab "Thêm đề" để tạo đề đầu tiên.</p>';
+    return;
+  }
+
+  list.innerHTML = '';
+  quizzes.forEach((quiz) => {
+    const { questions } = parseQuizText(quiz.rawText);
+    const updatedStr = new Date(quiz.updatedAt).toLocaleString('vi-VN', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+
+    const card = document.createElement('div');
+    card.className = 'quiz-card';
+    card.innerHTML = `
+      <div class="quiz-card-main">
+        <div class="quiz-card-title"></div>
+        <div class="quiz-card-meta">${questions.length} câu · Sửa lúc ${updatedStr}</div>
+      </div>
+      <div class="quiz-card-actions">
+        <button type="button" class="icon-text-btn btn-quiz-start">▶ Bắt đầu</button>
+        <button type="button" class="icon-text-btn btn-quiz-edit">✎ Sửa</button>
+        <button type="button" class="icon-text-btn btn-quiz-delete">🗑</button>
+      </div>
+      <div class="quiz-start-config hidden">
+        <div class="settings-grid">
+          <div class="setting">
+            <label>Thời gian làm bài (phút)</label>
+            <input type="number" class="input-start-time" min="1" max="600" value="${Math.max(5, questions.length)}">
+          </div>
+          <div class="setting toggle-setting">
+            <label>Xáo trộn câu hỏi</label>
+            <input type="checkbox" class="input-start-shuffle-q" checked>
+          </div>
+          <div class="setting toggle-setting">
+            <label>Xáo trộn đáp án</label>
+            <input type="checkbox" class="input-start-shuffle-o" checked>
+          </div>
+        </div>
+        <div class="quiz-start-actions">
+          <button type="button" class="ghost-btn btn-quiz-cancel-start">Hủy</button>
+          <button type="button" class="primary-btn btn-quiz-confirm-start">Bắt đầu làm bài</button>
+        </div>
+      </div>`;
+    card.querySelector('.quiz-card-title').textContent = quiz.title;
+
+    const configPanel = card.querySelector('.quiz-start-config');
+    configPanel.classList.toggle('hidden', expandedQuizId !== quiz.id);
+
+    card.querySelector('.btn-quiz-start').addEventListener('click', () => {
+      expandedQuizId = expandedQuizId === quiz.id ? null : quiz.id;
+      renderQuizLibrary();
+    });
+    card.querySelector('.btn-quiz-cancel-start').addEventListener('click', () => {
+      expandedQuizId = null;
+      renderQuizLibrary();
+    });
+    card.querySelector('.btn-quiz-edit').addEventListener('click', () => loadQuizIntoEditor(quiz));
+    card.querySelector('.btn-quiz-delete').addEventListener('click', () => {
+      showConfirm(`Xóa đề "${quiz.title}"? Thao tác này không thể hoàn tác.`, () => {
+        deleteQuiz(quiz.id);
+        renderQuizLibrary();
+      });
+    });
+    card.querySelector('.btn-quiz-confirm-start').addEventListener('click', () => {
+      startQuizFromLibrary(quiz, {
+        timeLimitMinutes: Math.max(1, Number(configPanel.querySelector('.input-start-time').value) || 15),
+        shuffleQuestions: configPanel.querySelector('.input-start-shuffle-q').checked,
+        shuffleOptions: configPanel.querySelector('.input-start-shuffle-o').checked,
+      });
+    });
+
+    list.appendChild(card);
+  });
+}
+
+function startQuizFromLibrary(quiz, options) {
+  const { questions, errors } = parseQuizText(quiz.rawText);
+  if (questions.length === 0) {
+    window.alert('Đề này không còn câu hỏi hợp lệ nào. Vui lòng sửa lại đề trước khi làm bài.');
+    return;
+  }
+  if (errors.length > 0
+      && !window.confirm(`Đề có ${errors.length} câu bị lỗi sẽ bị bỏ qua. Vẫn tiếp tục với ${questions.length} câu hợp lệ?`)) {
+    return;
+  }
+  const config = { title: quiz.title, rawText: quiz.rawText, ...options };
+  const built = buildQuestions(questions, config.shuffleQuestions, config.shuffleOptions);
+  expandedQuizId = null;
+  startExam(config, built, null);
 }
 
 function renderHistory() {
@@ -496,16 +637,19 @@ function checkResumeBanner() {
 function goHome() {
   exam = null;
   showScreen('home');
-  renderHistory();
-  checkResumeBanner();
+  switchHomeTab('practice');
 }
 
 // ---------------------------------------------------------------------------
 // Wire up events
 // ---------------------------------------------------------------------------
+$('tab-btn-practice').addEventListener('click', () => switchHomeTab('practice'));
+$('tab-btn-editor').addEventListener('click', () => switchHomeTab('editor'));
+
 $('input-quiz-text').addEventListener('input', debounce(updatePreview, 250));
-$('input-time-limit').addEventListener('input', () => { timeFieldTouched = true; });
-$('btn-start-exam').addEventListener('click', handleStartExam);
+$('input-title').addEventListener('input', () => { if (editingQuizId) updateEditorModeBanner(); });
+$('btn-new-quiz').addEventListener('click', resetEditor);
+$('btn-save-quiz').addEventListener('click', handleSaveQuiz);
 $('btn-load-sample').addEventListener('click', () => {
   $('input-quiz-text').value = SAMPLE_QUIZ_TEXT;
   if (!$('input-title').value.trim()) $('input-title').value = 'Đề thi mẫu';

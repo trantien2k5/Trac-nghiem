@@ -18,58 +18,67 @@
   <section id="screen-home" class="screen active">
     <header class="home-header">
       <h1>📝 Trắc Nghiệm Online</h1>
-      <p class="subtitle">Dán đề, chọn tuỳ chọn thi, và bắt đầu làm bài như thi thật</p>
+      <p class="subtitle">Quản lý đề và luyện tập như thi thật</p>
     </header>
 
-    <div class="card">
-      <label class="field-label" for="input-title">Tên đề thi</label>
-      <input id="input-title" type="text" placeholder="VD: Ôn tập chương 1 - Lịch sử" maxlength="120">
-
-      <div class="field-row-header">
-        <label class="field-label" for="input-quiz-text">Nội dung đề (văn bản thuần)</label>
-        <button type="button" id="btn-show-format" class="link-btn">Xem định dạng &amp; ví dụ</button>
-      </div>
-      <textarea id="input-quiz-text" rows="10" placeholder="Dán nội dung đề vào đây..."></textarea>
-      <div class="textarea-actions">
-        <button type="button" id="btn-load-sample" class="ghost-btn small">Dùng đề mẫu</button>
-        <span id="question-count-preview" class="hint-text"></span>
-      </div>
-
-      <div id="parse-errors" class="error-box hidden"></div>
-
-      <div class="settings-grid">
-        <div class="setting">
-          <label for="input-time-limit">Thời gian làm bài (phút)</label>
-          <input id="input-time-limit" type="number" min="1" max="600" value="15">
-        </div>
-        <div class="setting toggle-setting">
-          <label for="toggle-shuffle-q">Xáo trộn câu hỏi</label>
-          <input id="toggle-shuffle-q" type="checkbox" checked>
-        </div>
-        <div class="setting toggle-setting">
-          <label for="toggle-shuffle-o">Xáo trộn đáp án</label>
-          <input id="toggle-shuffle-o" type="checkbox" checked>
-        </div>
-      </div>
-
-      <button type="button" id="btn-start-exam" class="primary-btn full">Bắt đầu làm bài</button>
+    <div class="home-tabs">
+      <button type="button" class="home-tab-btn active" id="tab-btn-practice" data-tab="practice">📖 Luyện đề</button>
+      <button type="button" class="home-tab-btn" id="tab-btn-editor" data-tab="editor">✏️ Thêm đề</button>
     </div>
 
-    <div class="card" id="history-card">
-      <div class="field-row-header">
-        <h2 class="card-title">Lịch sử làm bài</h2>
-        <button type="button" id="btn-clear-history" class="link-btn danger-link hidden">Xóa lịch sử</button>
+    <!-- ---- PRACTICE TAB ---- -->
+    <div id="panel-practice" class="home-panel active">
+      <div id="resume-banner" class="resume-banner hidden">
+        <span>Bạn có một bài thi đang làm dở<span id="resume-title"></span>. Tiếp tục chứ?</span>
+        <div class="resume-actions">
+          <button type="button" id="btn-resume" class="primary-btn small">Tiếp tục</button>
+          <button type="button" id="btn-discard-resume" class="ghost-btn small">Bỏ qua</button>
+        </div>
       </div>
-      <div id="history-list" class="history-list">
-        <p class="empty-text">Chưa có bài thi nào được hoàn thành.</p>
+
+      <div class="card">
+        <h2 class="card-title">Đề của bạn</h2>
+        <div id="quiz-library-list" class="quiz-library-list">
+          <p class="empty-text">Chưa có đề nào. Sang tab "Thêm đề" để tạo đề đầu tiên.</p>
+        </div>
+      </div>
+
+      <div class="card" id="history-card">
+        <div class="field-row-header">
+          <h2 class="card-title">Lịch sử làm bài</h2>
+          <button type="button" id="btn-clear-history" class="link-btn danger-link hidden">Xóa lịch sử</button>
+        </div>
+        <div id="history-list" class="history-list">
+          <p class="empty-text">Chưa có bài thi nào được hoàn thành.</p>
+        </div>
       </div>
     </div>
 
-    <div id="resume-banner" class="resume-banner hidden">
-      <span>Bạn có một bài thi đang làm dở<span id="resume-title"></span>. Tiếp tục chứ?</span>
-      <div class="resume-actions">
-        <button type="button" id="btn-resume" class="primary-btn small">Tiếp tục</button>
-        <button type="button" id="btn-discard-resume" class="ghost-btn small">Bỏ qua</button>
+    <!-- ---- EDITOR TAB ---- -->
+    <div id="panel-editor" class="home-panel">
+      <div class="card">
+        <div id="editor-mode-banner" class="editor-mode-banner hidden">
+          <span>Đang sửa: <strong id="editor-mode-title"></strong></span>
+          <button type="button" id="btn-new-quiz" class="link-btn">+ Tạo đề mới</button>
+        </div>
+
+        <label class="field-label" for="input-title">Tên đề thi</label>
+        <input id="input-title" type="text" placeholder="VD: Ôn tập chương 1 - Lịch sử" maxlength="120">
+
+        <div class="field-row-header">
+          <label class="field-label" for="input-quiz-text">Nội dung đề (văn bản thuần)</label>
+          <button type="button" id="btn-show-format" class="link-btn">Xem định dạng &amp; ví dụ</button>
+        </div>
+        <textarea id="input-quiz-text" rows="10" placeholder="Dán nội dung đề vào đây..."></textarea>
+        <div class="textarea-actions">
+          <button type="button" id="btn-load-sample" class="ghost-btn small">Dùng đề mẫu</button>
+          <span id="question-count-preview" class="hint-text"></span>
+        </div>
+
+        <div id="parse-errors" class="error-box hidden"></div>
+
+        <button type="button" id="btn-save-quiz" class="primary-btn full">Lưu đề</button>
+        <p id="save-quiz-toast" class="save-toast hidden"></p>
       </div>
     </div>
   </section>
