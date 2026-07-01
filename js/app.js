@@ -11,6 +11,7 @@ const screens = {
   home: $('screen-home'),
   exam: $('screen-exam'),
   result: $('screen-result'),
+  preview: $('screen-preview'),
 };
 
 function showScreen(name) {
@@ -520,10 +521,11 @@ function renderQuizLibrary() {
         <div class="quiz-card-title"></div>
         <div class="quiz-card-meta">${questions.length} câu · Sửa lúc ${updatedStr}</div>
       </div>
-      <div class="quiz-card-actions">
-        <button type="button" class="icon-text-btn btn-quiz-start">▶ Bắt đầu</button>
-        <button type="button" class="icon-text-btn btn-quiz-edit">✎ Sửa</button>
-        <button type="button" class="icon-text-btn btn-quiz-delete">🗑</button>
+      <button type="button" class="quiz-card-primary-btn btn-quiz-start">▶ Luyện tập</button>
+      <div class="quiz-card-toolbar">
+        <button type="button" class="toolbar-btn btn-quiz-view"><span>👁</span>Xem đề</button>
+        <button type="button" class="toolbar-btn btn-quiz-edit"><span>✎</span>Sửa</button>
+        <button type="button" class="toolbar-btn btn-quiz-delete danger"><span>🗑</span>Xóa</button>
       </div>
       <div class="quiz-start-config hidden">
         <div class="settings-grid">
@@ -558,6 +560,7 @@ function renderQuizLibrary() {
       expandedQuizId = null;
       renderQuizLibrary();
     });
+    card.querySelector('.btn-quiz-view').addEventListener('click', () => openQuizPreview(quiz));
     card.querySelector('.btn-quiz-edit').addEventListener('click', () => loadQuizIntoEditor(quiz));
     card.querySelector('.btn-quiz-delete').addEventListener('click', () => {
       showConfirm(`Xóa đề "${quiz.title}"? Thao tác này không thể hoàn tác.`, () => {
@@ -575,6 +578,65 @@ function renderQuizLibrary() {
 
     list.appendChild(card);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Preview screen ("Xem đề") — read-only view of a saved quiz's full content
+// ---------------------------------------------------------------------------
+function openQuizPreview(quiz) {
+  const { questions, errors } = parseQuizText(quiz.rawText);
+
+  $('preview-title').textContent = quiz.title;
+  $('preview-meta').textContent = errors.length > 0
+    ? `${questions.length} câu hợp lệ · ${errors.length} câu bị lỗi`
+    : `${questions.length} câu`;
+
+  const list = $('preview-list');
+  list.innerHTML = '';
+
+  if (errors.length > 0) {
+    const warn = document.createElement('div');
+    warn.className = 'error-box';
+    warn.innerHTML = `<p>Đề có ${errors.length} câu bị lỗi định dạng (không hiển thị bên dưới):</p>`
+      + '<ul>' + errors.map((e) => `<li>${escapeHtml(e)}</li>`).join('') + '</ul>';
+    list.appendChild(warn);
+  }
+
+  questions.forEach((q, idx) => {
+    const card = document.createElement('div');
+    card.className = 'review-item';
+
+    const head = document.createElement('div');
+    head.className = 'review-item-head';
+    head.innerHTML = `<span class="review-badge neutral">Câu ${idx + 1}</span>`;
+    card.appendChild(head);
+
+    const qText = document.createElement('p');
+    qText.className = 'review-question';
+    qText.textContent = q.text;
+    card.appendChild(qText);
+
+    const optWrap = document.createElement('div');
+    optWrap.className = 'review-options';
+    q.options.forEach((opt) => {
+      const row = document.createElement('div');
+      row.className = 'review-option' + (opt.isCorrect ? ' correct' : '');
+      row.innerHTML = `<span class="option-key">${opt.key}</span><span></span>`;
+      row.querySelector('span:last-child').textContent = opt.text;
+      optWrap.appendChild(row);
+    });
+    card.appendChild(optWrap);
+
+    const explBox = document.createElement('div');
+    explBox.className = 'review-explanation';
+    explBox.innerHTML = '<strong>💡 Giải thích:</strong> <span></span>';
+    explBox.querySelector('span').textContent = q.explanation;
+    card.appendChild(explBox);
+
+    list.appendChild(card);
+  });
+
+  showScreen('preview');
 }
 
 function startQuizFromLibrary(quiz, options) {
@@ -686,6 +748,8 @@ $('btn-discard-resume').addEventListener('click', () => {
   clearProgress();
   $('resume-banner').classList.add('hidden');
 });
+
+$('btn-preview-back').addEventListener('click', goHome);
 
 $('btn-exit-exam').addEventListener('click', requestExit);
 $('btn-prev').addEventListener('click', goPrev);
