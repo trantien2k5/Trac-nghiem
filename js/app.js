@@ -1,9 +1,9 @@
-import { parseQuizText, shuffleArray, SAMPLE_QUIZ_TEXT } from './parser.js';
+import { parseQuizText, shuffleArray, SAMPLE_QUIZ_TEXT } from './parser.js?v=8';
 import {
   loadHistory, saveAttempt, clearHistory,
   saveProgress, loadProgress, clearProgress,
   loadQuizzes, saveQuiz, deleteQuiz,
-} from './storage.js';
+} from './storage.js?v=8';
 
 const $ = (id) => document.getElementById(id);
 

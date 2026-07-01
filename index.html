@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
 <div id="app">
@@ -62,22 +62,26 @@
           <button type="button" id="btn-new-quiz" class="link-btn">+ Tạo đề mới</button>
         </div>
 
-        <label class="field-label" for="input-title">Tên đề thi</label>
-        <input id="input-title" type="text" placeholder="VD: Ôn tập chương 1 - Lịch sử" maxlength="120">
-
-        <div class="field-row-header">
-          <label class="field-label" for="input-quiz-text">Nội dung đề (văn bản thuần)</label>
-          <button type="button" id="btn-show-format" class="link-btn">Xem định dạng &amp; ví dụ</button>
-        </div>
-        <textarea id="input-quiz-text" rows="10" placeholder="Dán nội dung đề vào đây..."></textarea>
-        <div class="textarea-actions">
-          <button type="button" id="btn-load-sample" class="ghost-btn small">Dùng đề mẫu</button>
-          <span id="question-count-preview" class="hint-text"></span>
+        <div class="field-group">
+          <label class="field-label" for="input-title">Tên đề thi</label>
+          <input id="input-title" type="text" placeholder="VD: Ôn tập chương 1 - Lịch sử" maxlength="120">
         </div>
 
-        <div id="parse-errors" class="error-box hidden"></div>
+        <div class="field-group">
+          <div class="field-row-header">
+            <label class="field-label" for="input-quiz-text">Nội dung đề (văn bản thuần)</label>
+            <button type="button" id="btn-show-format" class="link-btn">Xem định dạng &amp; ví dụ</button>
+          </div>
+          <textarea id="input-quiz-text" rows="10" placeholder="Dán nội dung đề vào đây..."></textarea>
+          <div class="textarea-actions">
+            <button type="button" id="btn-load-sample" class="ghost-btn small">Dùng đề mẫu</button>
+            <span id="question-count-preview" class="hint-text"></span>
+          </div>
 
-        <div id="editor-preview-section" class="editor-preview-section hidden">
+          <div id="parse-errors" class="error-box hidden"></div>
+        </div>
+
+        <div id="editor-preview-section" class="field-group editor-preview-section hidden">
           <div class="field-row-header">
             <label class="field-label">Xem trước — đã tách thành từng câu</label>
             <button type="button" id="btn-toggle-editor-preview" class="link-btn">Ẩn</button>
@@ -224,6 +228,6 @@
 
 </div>
 
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js?v=8"></script>
 </body>
 </html>

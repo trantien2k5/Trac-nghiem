@@ -85,6 +85,16 @@ button, input, textarea { font-family: inherit; }
 .field-row-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
 .field-row-header .field-label { margin: 0; }
 
+.field-group {
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-top: 14px;
+  background: #fcfcfe;
+}
+.field-group > .field-label:first-child,
+.field-group > .field-row-header:first-child { margin-top: 0; }
+
 input[type="text"], input[type="number"], textarea {
   width: 100%;
   border: 1.5px solid var(--color-border);
@@ -116,9 +126,6 @@ textarea { resize: vertical; line-height: 1.5; min-height: 140px; }
 }
 .error-box ul { margin: 4px 0 0; padding-left: 18px; }
 
-.editor-preview-section {
-  margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--color-border);
-}
 .editor-preview-section .review-list { margin-top: 10px; max-height: 480px; overflow-y: auto; }
 
 .settings-grid {
