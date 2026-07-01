@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#4f46e5">
+<title>Trắc Nghiệm Online</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ HOME SCREEN ============ -->
+  <section id="screen-home" class="screen active">
+    <header class="home-header">
+      <h1>📝 Trắc Nghiệm Online</h1>
+      <p class="subtitle">Dán đề, chọn tuỳ chọn thi, và bắt đầu làm bài như thi thật</p>
+    </header>
+
+    <div class="card">
+      <label class="field-label" for="input-title">Tên đề thi</label>
+      <input id="input-title" type="text" placeholder="VD: Ôn tập chương 1 - Lịch sử" maxlength="120">
+
+      <div class="field-row-header">
+        <label class="field-label" for="input-quiz-text">Nội dung đề (văn bản thuần)</label>
+        <button type="button" id="btn-show-format" class="link-btn">Xem định dạng &amp; ví dụ</button>
+      </div>
+      <textarea id="input-quiz-text" rows="10" placeholder="Dán nội dung đề vào đây..."></textarea>
+      <div class="textarea-actions">
+        <button type="button" id="btn-load-sample" class="ghost-btn small">Dùng đề mẫu</button>
+        <span id="question-count-preview" class="hint-text"></span>
+      </div>
+
+      <div id="parse-errors" class="error-box hidden"></div>
+
+      <div class="settings-grid">
+        <div class="setting">
+          <label for="input-time-limit">Thời gian làm bài (phút)</label>
+          <input id="input-time-limit" type="number" min="1" max="600" value="15">
+        </div>
+        <div class="setting toggle-setting">
+          <label for="toggle-shuffle-q">Xáo trộn câu hỏi</label>
+          <input id="toggle-shuffle-q" type="checkbox" checked>
+        </div>
+        <div class="setting toggle-setting">
+          <label for="toggle-shuffle-o">Xáo trộn đáp án</label>
+          <input id="toggle-shuffle-o" type="checkbox" checked>
+        </div>
+      </div>
+
+      <button type="button" id="btn-start-exam" class="primary-btn full">Bắt đầu làm bài</button>
+    </div>
+
+    <div class="card" id="history-card">
+      <div class="field-row-header">
+        <h2 class="card-title">Lịch sử làm bài</h2>
+        <button type="button" id="btn-clear-history" class="link-btn danger-link hidden">Xóa lịch sử</button>
+      </div>
+      <div id="history-list" class="history-list">
+        <p class="empty-text">Chưa có bài thi nào được hoàn thành.</p>
+      </div>
+    </div>
+
+    <div id="resume-banner" class="resume-banner hidden">
+      <span>Bạn có một bài thi đang làm dở<span id="resume-title"></span>. Tiếp tục chứ?</span>
+      <div class="resume-actions">
+        <button type="button" id="btn-resume" class="primary-btn small">Tiếp tục</button>
+        <button type="button" id="btn-discard-resume" class="ghost-btn small">Bỏ qua</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EXAM SCREEN ============ -->
+  <section id="screen-exam" class="screen">
+    <header class="exam-topbar">
+      <button type="button" id="btn-exit-exam" class="icon-btn" aria-label="Thoát bài thi">✕</button>
+      <div class="exam-title-wrap">
+        <div id="exam-title" class="exam-title">Đề thi</div>
+        <div id="exam-progress-text" class="exam-progress-text">Câu 1/1</div>
+      </div>
+      <div id="exam-timer" class="exam-timer">--:--</div>
+    </header>
+    <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+
+    <main class="exam-main">
+      <div class="question-card">
+        <div class="question-head">
+          <span id="question-number-badge" class="question-number-badge">Câu 1</span>
+          <button type="button" id="btn-flag" class="flag-btn" aria-pressed="false">
+            <span class="flag-icon">🚩</span><span id="flag-label">Đánh dấu</span>
+          </button>
+        </div>
+        <p id="question-text" class="question-text"></p>
+        <div id="options-list" class="options-list"></div>
+      </div>
+    </main>
+
+    <nav class="exam-bottombar">
+      <button type="button" id="btn-prev" class="nav-btn">‹ Câu trước</button>
+      <button type="button" id="btn-open-grid" class="nav-btn grid-btn">☰ Danh sách</button>
+      <button type="button" id="btn-next" class="nav-btn">Câu sau ›</button>
+    </nav>
+  </section>
+
+  <!-- ============ QUESTION GRID MODAL ============ -->
+  <div id="grid-modal" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h3 class="modal-title">Danh sách câu hỏi</h3>
+      <div class="grid-legend">
+        <span><i class="dot dot-answered"></i>Đã làm</span>
+        <span><i class="dot dot-flagged"></i>Đánh dấu</span>
+        <span><i class="dot dot-empty"></i>Chưa làm</span>
+      </div>
+      <div id="question-grid" class="question-grid"></div>
+      <div class="modal-stats" id="modal-stats"></div>
+      <button type="button" id="btn-submit-exam" class="danger-btn full">Nộp bài</button>
+      <button type="button" id="btn-close-grid" class="ghost-btn full">Đóng</button>
+    </div>
+  </div>
+
+  <!-- ============ CONFIRM DIALOG ============ -->
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="confirm-box">
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button type="button" id="btn-confirm-cancel" class="ghost-btn">Hủy</button>
+        <button type="button" id="btn-confirm-ok" class="danger-btn">Đồng ý</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FORMAT HELP MODAL ============ -->
+  <div id="format-modal" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h3 class="modal-title">Định dạng đề thi</h3>
+      <div class="format-help">
+        <p>Mỗi câu hỏi cách nhau bằng <strong>1 dòng trống</strong>. Mỗi câu gồm: nội dung câu hỏi, 4 dòng đáp án <strong>A. B. C. D.</strong>, và đáp án đúng được xác định bằng <strong>một trong hai cách</strong>:</p>
+        <ul>
+          <li>Đặt dấu <code>*</code> ngay trước đáp án đúng, hoặc</li>
+          <li>Thêm dòng <code>Đáp án: X</code> ở cuối câu</li>
+        </ul>
+        <pre id="format-example" class="format-example"></pre>
+      </div>
+      <button type="button" id="btn-close-format" class="primary-btn full">Đã hiểu</button>
+    </div>
+  </div>
+
+  <!-- ============ RESULT SCREEN ============ -->
+  <section id="screen-result" class="screen">
+    <header class="result-header">
+      <h1>Kết quả</h1>
+    </header>
+    <main class="result-main">
+      <div class="score-card">
+        <div id="score-ring" class="score-ring">
+          <span id="score-percent">0%</span>
+        </div>
+        <div class="score-details">
+          <div id="score-fraction" class="score-fraction">0/0 câu đúng</div>
+          <div id="result-title" class="result-title-text"></div>
+          <div id="result-time" class="result-time-text"></div>
+        </div>
+      </div>
+      <div class="stat-chips">
+        <div class="stat-chip stat-correct"><span id="stat-correct">0</span><label>Đúng</label></div>
+        <div class="stat-chip stat-wrong"><span id="stat-wrong">0</span><label>Sai</label></div>
+        <div class="stat-chip stat-blank"><span id="stat-blank">0</span><label>Bỏ trống</label></div>
+      </div>
+
+      <div class="review-filter-tabs">
+        <button type="button" class="filter-tab active" data-filter="all">Tất cả</button>
+        <button type="button" class="filter-tab" data-filter="wrong">Sai</button>
+        <button type="button" class="filter-tab" data-filter="flagged">Đánh dấu</button>
+      </div>
+
+      <div id="review-list" class="review-list"></div>
+
+      <div class="result-actions">
+        <button type="button" id="btn-retry" class="primary-btn full">Làm lại đề này</button>
+        <button type="button" id="btn-new-exam" class="ghost-btn full">Làm đề khác</button>
+      </div>
+    </main>
+  </section>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
