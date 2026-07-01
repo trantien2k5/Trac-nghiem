@@ -1,18 +1,25 @@
 // Parser cho định dạng đề thi văn bản thuần.
 //
 // Mỗi câu hỏi cách nhau bởi 1 dòng trống. Mỗi câu bắt buộc có đủ 4 phần:
-//   - Nội dung câu hỏi (các dòng không khớp đáp án/đáp án đúng/giải thích).
+//   - Nội dung câu hỏi (phần văn bản không khớp đáp án/đáp án đúng/giải thích).
 //   - 4 dòng đáp án dạng "A. ...", "B) ...", "C: ...", "D - ..." (chấp nhận chữ hoa/thường).
 //   - Đáp án đúng: đánh dấu bằng dấu "*" ngay trước chữ cái, hoặc bằng
 //     một dòng riêng "Đáp án: X" / "Dap an: X" / "Answer: X".
-//   - Giải thích: dòng riêng "Giải thích: ..." (mọi dòng sau đó trong cùng
-//     câu được coi là phần tiếp theo của giải thích).
+//   - Giải thích: mốc "Giải thích: ..." — có thể đứng ở cuối câu (khuyến
+//     nghị) hoặc dính liền cuối dòng câu hỏi/đáp án (vẫn được tách đúng);
+//     mọi nội dung sau mốc này trong câu được gộp làm phần giải thích.
 
 const ANSWER_LINE_RE = /^\s*(đáp\s*án|dap\s*an|answer|correct\s*answer|correct|đa)\s*[:.\-)]\s*([a-dA-D])\s*\.?\s*$/i;
-const EXPLANATION_LINE_RE = /^\s*(giải\s*thích|giai\s*thich|explanation|explain|gt)\s*[:.\-)]\s*(.*)$/i;
+// Tìm mốc "Giải thích:" ở bất kỳ vị trí nào trong một dòng (không bắt buộc ở
+// đầu dòng), để vẫn tách đúng khi người dùng dán đề bị dính dòng giải thích
+// vào ngay sau câu hỏi trên cùng một dòng.
+const EXPLANATION_SPLIT_RE = /(giải\s*thích|giai\s*thich|explanation|explain)\s*[:.\-)]\s*/i;
 const OPTION_LINE_RE = /^\s*(\*)?\s*\(?([a-dA-D])\)?\s*[.):\-]\s*(.+)$/;
-const QUESTION_MARKER_RE = /^\s*(câu\s*hỏi|câu|question)\s*\d+\s*[.:)\-]/i;
-const QUESTION_PREFIX_STRIP_RE = /^\s*(câu\s*hỏi|câu|question)?\s*\d+\s*[.:)\-]\s*/i;
+const QUESTION_MARKER_RE = /^\s*(câu\s*hỏi|câu|question)\s*\d+\s*[.:)\-]?/i;
+// Bóc tiền tố số thứ tự đầu câu hỏi. Nếu có từ "câu"/"question" thì dấu câu
+// sau số là tuỳ chọn (chấp nhận thiếu dấu ":" hoặc "."); nếu không có từ
+// khóa thì bắt buộc có dấu câu để tránh xóa nhầm số trong nội dung câu hỏi.
+const QUESTION_PREFIX_STRIP_RE = /^\s*(?:(?:câu\s*hỏi|câu|question)\s*\d+\s*[.:)\-]?|\d+\s*[.:)\-])\s*/i;
 
 export function parseQuizText(rawText) {
   const errors = [];
@@ -30,31 +37,25 @@ export function parseQuizText(rawText) {
   const questions = [];
 
   blocks.forEach((block, blockIdx) => {
-    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
     const questionNumber = blockIdx + 1;
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
     const questionLines = [];
     const options = [];
-    const explanationLines = [];
+    const explanationParts = [];
     let answerFromLine = null;
-    let explanationStarted = false;
+    let explanationTailMode = false;
 
-    for (const line of lines) {
-      if (explanationStarted) {
-        explanationLines.push(line);
-        continue;
-      }
-      const expMatch = line.match(EXPLANATION_LINE_RE);
-      if (expMatch) {
-        explanationStarted = true;
-        if (expMatch[2] && expMatch[2].trim()) explanationLines.push(expMatch[2].trim());
-        continue;
-      }
-      const ansMatch = line.match(ANSWER_LINE_RE);
+    // Phân loại một đoạn văn bản (dòng đầy đủ, hoặc phần còn lại của dòng
+    // sau khi đã tách mốc "Giải thích:") thành đáp án đúng / đáp án / nội
+    // dung câu hỏi hoặc phần tiếp theo của giải thích.
+    const classifySegment = (segment) => {
+      if (!segment) return;
+      const ansMatch = segment.match(ANSWER_LINE_RE);
       if (ansMatch) {
         answerFromLine = ansMatch[2].toUpperCase();
-        continue;
+        return;
       }
-      const optMatch = options.length < 4 ? line.match(OPTION_LINE_RE) : null;
+      const optMatch = options.length < 4 ? segment.match(OPTION_LINE_RE) : null;
       if (optMatch) {
         const [, star, letter, optText] = optMatch;
         options.push({
@@ -62,10 +63,29 @@ export function parseQuizText(rawText) {
           text: optText.trim(),
           isCorrect: Boolean(star),
         });
+        return;
+      }
+      if (explanationTailMode) {
+        explanationParts.push(segment);
+      } else {
+        questionLines.push(segment);
+      }
+    };
+
+    for (const line of lines) {
+      const explMatch = line.match(EXPLANATION_SPLIT_RE);
+      if (explMatch) {
+        const before = line.slice(0, explMatch.index).trim();
+        const after = line.slice(explMatch.index + explMatch[0].length).trim();
+        classifySegment(before);
+        explanationTailMode = true;
+        if (after) explanationParts.push(after);
         continue;
       }
-      questionLines.push(line);
+      classifySegment(line);
     }
+
+    const explanation = explanationParts.join(' ').trim();
 
     if (questionLines.length === 0 && options.length === 0) return;
 
@@ -102,7 +122,6 @@ export function parseQuizText(rawText) {
       return;
     }
 
-    const explanation = explanationLines.join(' ').trim();
     if (!explanation) {
       errors.push(`Câu ${questionNumber}: thiếu phần giải thích (thêm dòng "Giải thích: ...").`);
       return;
